@@ -45,10 +45,10 @@ export default function App() {
         // 【2. 获取 足球 数据 (Sofascore)】
         // ==========================================
         try {
-          const soccerResponse = await fetch('https://sofascore.p.rapidapi.com/teams/get-last-matches?teamId=38&pageIndex=0', {
+          const soccerResponse = await fetch(' https://sportapi7.p.rapidapi.com/api/v1/player/817181/unique-tournament/132/season/65360/ratings', {
             method: 'GET',
             headers: {
-              'x-rapidapi-host': 'sofascore.p.rapidapi.com',
+              'x-rapidapi-host': 'sportapi7.p.rapidapi.com',
               'x-rapidapi-key': '04a63d4b4amsh34d76e9221bc0c7p100f24jsn7e932263e794'
             }
           });
