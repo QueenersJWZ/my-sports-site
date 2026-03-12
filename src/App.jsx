@@ -18,65 +18,32 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // 2. 获取数据的核心逻辑 (已接入你的真实API，并取消了自动刷新)
+  // 2. 获取数据的核心逻辑 (已替换为你提供的新 API)
   useEffect(() => {
     const fetchSportsData = async () => {
       setLoading(true);
       
       try {
         // ==========================================
-        // 【1. 获取 NBA 数据】
+        // 【测试你提供的新 SportAPI7 接口】
         // ==========================================
         try {
-          const nbaResponse = await fetch('https://nba-api-free-data.p.rapidapi.com/nba-atlantic-team-list', {
-            method: 'GET',
-            headers: {
-              'x-rapidapi-host': 'nba-api-free-data.p.rapidapi.com',
-              'x-rapidapi-key': '04a63d4b4amsh34d76e9221bc0c7p100f24jsn7e932263e794'
-            }
-          });
-          const nbaJson = await nbaResponse.json();
-          console.log("真实 NBA 数据:", nbaJson); 
-        } catch (e) {
-          console.error("NBA API请求失败:", e);
-        }
-
-        // ==========================================
-        // 【2. 获取 足球 数据 (Sofascore)】
-        // ==========================================
-        try {
-          const soccerResponse = await fetch(' https://sportapi7.p.rapidapi.com/api/v1/player/817181/unique-tournament/132/season/65360/ratings', {
+          const response = await fetch('https://sportapi7.p.rapidapi.com/api/v1/player/817181/unique-tournament/132/season/65360/ratings', {
             method: 'GET',
             headers: {
               'x-rapidapi-host': 'sportapi7.p.rapidapi.com',
               'x-rapidapi-key': '04a63d4b4amsh34d76e9221bc0c7p100f24jsn7e932263e794'
             }
           });
-          const soccerJson = await soccerResponse.json();
-          console.log("真实 足球 数据:", soccerJson);
+          const json = await response.json();
+          console.log("SportAPI7 真实返回数据:", json); 
+          // 提示：你可以按 F12 打开控制台查看这个 json 里面到底装了什么
         } catch (e) {
-          console.error("足球 API请求失败:", e);
+          console.error("SportAPI7 请求失败 (请检查是否已在RapidAPI订阅免费套餐):", e);
         }
 
         // ==========================================
-        // 【3. 获取 F1 数据】
-        // ==========================================
-        try {
-          const f1Response = await fetch('https://f1-motorsport-data.p.rapidapi.com/schedule?year=2024', {
-            method: 'GET',
-            headers: {
-              'x-rapidapi-host': 'f1-motorsport-data.p.rapidapi.com',
-              'x-rapidapi-key': '04a63d4b4amsh34d76e9221bc0c7p100f24jsn7e932263e794'
-            }
-          });
-          const f1Json = await f1Response.json();
-          console.log("真实 F1 数据:", f1Json);
-        } catch (e) {
-          console.error("F1 API请求失败:", e);
-        }
-
-        // ==========================================
-        // 临时数据填充区 (保证页面正常显示，等你学会解析上面的 Json 后再替换)
+        // 临时数据填充区 (保证页面正常显示)
         // ==========================================
         setNbaData({
           team: "波士顿凯尔特人",
@@ -109,16 +76,13 @@ export default function App() {
         });
 
       } catch (error) {
-        console.error("获取体育数据失败:", error);
+        console.error("获取数据过程发生错误:", error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchSportsData();
-    
-    // 【重要修改】：删除了 setInterval(fetchSportsData, 300000); 
-    // 现在只有在打开网页时才会请求1次，保护你的500次额度！
     
   }, []);
 
