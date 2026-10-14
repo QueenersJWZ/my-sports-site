@@ -50,6 +50,7 @@ function getDateRange(pastDays = 14, futureDays = 14) {
 
 function App() {
   const [activeTab, setActiveTab] = useState('nba');
+  const [footballSubTab, setFootballSubTab] = useState('all');
   const [loading, setLoading] = useState(true);
 
   // NBA 数据
@@ -130,21 +131,25 @@ function App() {
     fetchNbaData();
   }, []);
 
-    // ============================================================
+  // ============================================================
   // 足球数据获取 (TheSportsDB - 免费、无需 token、支持 CORS)
   // 联赛 ID：英超 4328 / 西甲 4335 / 欧冠 4480 / 中超 4359
   // ============================================================
   useEffect(() => {
     const fetchFootballData = async () => {
       try {
-        const API_KEY = '3'; // TheSportsDB 免费测试 key
+        const API_KEY = '3';
         const BASE = `https://www.thesportsdb.com/api/v1/json/${API_KEY}`;
 
         const leagues = [
           { id: '4328', name: '英超', teams: ['Manchester City'] },
           { id: '4335', name: '西甲', teams: ['Barcelona'] },
           { id: '4480', name: '欧冠', teams: ['Manchester City', 'Barcelona'] },
-          { id: '4359', name: '中超', teams: ['Shandong Taishan', 'Shandong Luneng'] },
+          {
+            id: '4359',
+            name: '中超',
+            teams: ['Shandong Taishan', 'Shandong Luneng'],
+          },
         ];
 
         const allMatches = [];
@@ -159,24 +164,35 @@ function App() {
         for (const league of leagues) {
           // ===== 1. 过去比赛 =====
           try {
-            const pastRes = await fetch(`${BASE}/eventspastleague.php?id=${league.id}`);
+            const pastRes = await fetch(
+              `${BASE}/eventspastleague.php?id=${league.id}`
+            );
             if (pastRes.ok) {
               const pastJson = await pastRes.json();
               const pastEvents = pastJson.events || [];
-              console.log(`[足球] ${league.name} 过去比赛原始数:`, pastEvents.length);
+              console.log(
+                `[足球] ${league.name} 过去比赛原始数:`,
+                pastEvents.length
+              );
 
               for (const e of pastEvents) {
                 if (!e.dateEvent) continue;
-                const eventDate = new Date(`${e.dateEvent}T${e.strTime || '00:00:00'}Z`);
+                const eventDate = new Date(
+                  `${e.dateEvent}T${e.strTime || '00:00:00'}Z`
+                );
                 if (eventDate < rangeStart || eventDate > rangeEnd) continue;
+
+                // 只要比分不为空，就认为比赛已结束
+                const hasScore =
+                  e.intHomeScore != null && e.intAwayScore != null;
 
                 allMatches.push({
                   id: e.idEvent,
                   homeTeam: e.strHomeTeam || '',
                   awayTeam: e.strAwayTeam || '',
-                  homeScore: e.intHomeScore != null ? parseInt(e.intHomeScore) : null,
-                  awayScore: e.intAwayScore != null ? parseInt(e.intAwayScore) : null,
-                  status: e.strStatus === 'Match Finished' ? 'FINISHED' : 'IN_PLAY',
+                  homeScore: hasScore ? parseInt(e.intHomeScore) : null,
+                  awayScore: hasScore ? parseInt(e.intAwayScore) : null,
+                  status: hasScore ? 'FINISHED' : 'SCHEDULED',
                   utcDate: eventDate.toISOString(),
                   beijingTime: toBeijingTime(eventDate),
                   competition: league.name,
@@ -193,15 +209,22 @@ function App() {
 
           // ===== 2. 未来比赛 =====
           try {
-            const nextRes = await fetch(`${BASE}/eventsnextleague.php?id=${league.id}`);
+            const nextRes = await fetch(
+              `${BASE}/eventsnextleague.php?id=${league.id}`
+            );
             if (nextRes.ok) {
               const nextJson = await nextRes.json();
               const nextEvents = nextJson.events || [];
-              console.log(`[足球] ${league.name} 未来比赛原始数:`, nextEvents.length);
+              console.log(
+                `[足球] ${league.name} 未来比赛原始数:`,
+                nextEvents.length
+              );
 
               for (const e of nextEvents) {
                 if (!e.dateEvent) continue;
-                const eventDate = new Date(`${e.dateEvent}T${e.strTime || '00:00:00'}Z`);
+                const eventDate = new Date(
+                  `${e.dateEvent}T${e.strTime || '00:00:00'}Z`
+                );
                 if (eventDate < rangeStart || eventDate > rangeEnd) continue;
 
                 allMatches.push({
@@ -248,7 +271,9 @@ function App() {
                     points: parseInt(row.intPoints),
                     goalDifference: parseInt(row.intGoalDifference),
                     league: league.name,
-                    isMyTeam: league.teams.some((t) => row.strTeam?.includes(t)),
+                    isMyTeam: league.teams.some((t) =>
+                      row.strTeam?.includes(t)
+                    ),
                   });
                 }
               }
@@ -262,7 +287,8 @@ function App() {
         }
 
         allMatches.sort(
-          (a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime()
+          (a, b) =>
+            new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime()
         );
 
         console.log(
@@ -279,14 +305,13 @@ function App() {
 
   // ============================================================
   // F1 数据获取 (OpenF1)
-  // 免费层：2023年至今历史数据，无需 API Key，限速 3次/秒
   // ============================================================
   useEffect(() => {
     const fetchF1Data = async () => {
       try {
         const currentYear = new Date().getFullYear();
 
-        // 1. 获取当前赛季所有大奖赛（用于查找 meeting 信息和未来赛程）
+        // 1. 获取当前赛季所有大奖赛
         const meetingsRes = await fetch(
           `https://api.openf1.org/v1/meetings?year=${currentYear}`
         );
@@ -298,25 +323,25 @@ function App() {
           meetingMap[m.meeting_key] = m;
         });
 
-        // 2. 获取最近一个 session 的车手信息（用于 driver_number → 姓名映射）
+        // 2. 获取最近 session 的车手信息
         const driversRes = await fetch(
           `https://api.openf1.org/v1/drivers?session_key=latest`
         );
         const drivers = driversRes.ok ? await driversRes.json() : [];
         await new Promise((r) => setTimeout(r, 400));
-        
+
         const driverMap = {};
         drivers.forEach((d) => {
           driverMap[d.driver_number] = d.full_name;
         });
 
-        // 3. 获取最近 session 所属的 meeting 信息
+        // 3. 设置当前大奖赛信息
         const latestMeetingKey = drivers[0]?.meeting_key;
         if (latestMeetingKey && meetingMap[latestMeetingKey]) {
           setF1CurrentMeeting(meetingMap[latestMeetingKey]);
         }
 
-        // 4. 获取车手积分榜（带车手姓名）
+        // 4. 车手积分榜
         const driversChampRes = await fetch(
           `https://api.openf1.org/v1/championship_drivers?session_key=latest`
         );
@@ -330,7 +355,9 @@ function App() {
           });
           setF1DriverStandings(
             unique
-              .sort((a, b) => (b.points_current || 0) - (a.points_current || 0))
+              .sort(
+                (a, b) => (b.points_current || 0) - (a.points_current || 0)
+              )
               .slice(0, 20)
               .map((d) => ({
                 ...d,
@@ -339,19 +366,23 @@ function App() {
               }))
           );
         }
+        await new Promise((r) => setTimeout(r, 400));
 
-        // 5. 获取车队积分榜
+        // 5. 车队积分榜
         const teamsChampRes = await fetch(
           `https://api.openf1.org/v1/championship_teams?session_key=latest`
         );
         if (teamsChampRes.ok) {
           const teamsChamp = await teamsChampRes.json();
           setF1TeamStandings(
-            teamsChamp.sort((a, b) => (b.points_current || 0) - (a.points_current || 0))
+            teamsChamp.sort(
+              (a, b) => (b.points_current || 0) - (a.points_current || 0)
+            )
           );
         }
+        await new Promise((r) => setTimeout(r, 400));
 
-        // 6. 获取排位赛发车顺位（带车手姓名）
+        // 6. 排位赛发车顺位
         const gridRes = await fetch(
           `https://api.openf1.org/v1/starting_grid?session_key=latest`
         );
@@ -368,8 +399,9 @@ function App() {
               }))
           );
         }
+        await new Promise((r) => setTimeout(r, 400));
 
-        // 7. 获取正赛结果（带车手姓名）
+        // 7. 正赛结果
         const resultsRes = await fetch(
           `https://api.openf1.org/v1/session_result?session_key=latest`
         );
@@ -387,7 +419,7 @@ function App() {
           );
         }
 
-        // 8. 计算未来两场大奖赛
+        // 8. 未来两场大奖赛
         const now = new Date();
         const upcoming = meetings
           .filter((m) => new Date(m.date_start) > now)
@@ -403,7 +435,6 @@ function App() {
           }));
 
         if (upcoming.length === 0) {
-          // 如果今年没有未来比赛，尝试获取明年的赛程
           const nextYearMeetingsRes = await fetch(
             `https://api.openf1.org/v1/meetings?year=${currentYear + 1}`
           );
@@ -449,11 +480,11 @@ function App() {
   return (
     <div className="app">
       <header className="header">
-        <h1> Queeners Sports Hub</h1>
+        <h1>🏆 我的体育资讯</h1>
         <p>过去 14 天 · 未来 14 天 | 北京时间</p>
       </header>
 
-      {/* Tab 导航 */}
+      {/* 一级 Tab 导航 */}
       <nav className="tabs">
         <button
           className={activeTab === 'nba' ? 'tab active' : 'tab'}
@@ -573,112 +604,175 @@ function App() {
         {/* ========== 足球板块 ========== */}
         {activeTab === 'football' && (
           <div className="tab-content">
+            {/* 足球子导航 */}
+            <nav className="subtabs">
+              <button
+                className={footballSubTab === 'all' ? 'subtab active' : 'subtab'}
+                onClick={() => setFootballSubTab('all')}
+              >
+                全部
+              </button>
+              <button
+                className={footballSubTab === '英超' ? 'subtab active' : 'subtab'}
+                onClick={() => setFootballSubTab('英超')}
+              >
+                英超
+              </button>
+              <button
+                className={footballSubTab === '西甲' ? 'subtab active' : 'subtab'}
+                onClick={() => setFootballSubTab('西甲')}
+              >
+                西甲
+              </button>
+              <button
+                className={footballSubTab === '欧冠' ? 'subtab active' : 'subtab'}
+                onClick={() => setFootballSubTab('欧冠')}
+              >
+                欧冠
+              </button>
+              <button
+                className={footballSubTab === '中超' ? 'subtab active' : 'subtab'}
+                onClick={() => setFootballSubTab('中超')}
+              >
+                中超
+              </button>
+            </nav>
+
+            {/* 比赛列表 */}
             <section className="section">
-              <h2>⚽ 比赛（英超 / 西甲 / 中超，前后 14 天）</h2>
-              {footballMatches.length === 0 ? (
-                <p className="empty">暂无比赛数据</p>
-              ) : (
-                <div className="table-wrap">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>时间（北京时间）</th>
-                        <th>联赛</th>
-                        <th>主队</th>
-                        <th>比分</th>
-                        <th>客队</th>
-                        <th>状态</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {footballMatches.map((m) => (
-                        <tr
-                          key={m.id}
-                          className={m.isMyTeam ? 'my-team-row' : ''}
-                        >
-                          <td className="time">{m.beijingTime}</td>
-                          <td>
-                            <span className="league-badge">
-                              {m.competition}
-                            </span>
-                          </td>
-                          <td>{m.homeTeam}</td>
-                          <td className="score">
-                            {m.homeScore != null
-                              ? `${m.homeScore} - ${m.awayScore}`
-                              : '未开始'}
-                          </td>
-                          <td>{m.awayTeam}</td>
-                          <td>
-                            <span
-                              className={`status ${
-                                m.status === 'FINISHED'
-                                  ? 'done'
-                                  : m.status === 'IN_PLAY'
-                                  ? 'live'
-                                  : 'upcoming'
-                              }`}
-                            >
-                              {m.status === 'FINISHED'
-                                ? '已结束'
-                                : m.status === 'IN_PLAY'
-                                ? '进行中'
-                                : '未开始'}
-                            </span>
-                          </td>
+              <h2>
+                ⚽ 比赛
+                {footballSubTab !== 'all'
+                  ? `（${footballSubTab}）`
+                  : '（全部联赛）'}
+                ，前后 14 天
+              </h2>
+              {(() => {
+                const filtered =
+                  footballSubTab === 'all'
+                    ? footballMatches
+                    : footballMatches.filter(
+                        (m) => m.competition === footballSubTab
+                      );
+                if (filtered.length === 0) {
+                  return <p className="empty">暂无比赛数据</p>;
+                }
+                return (
+                  <div className="table-wrap">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>时间（北京时间）</th>
+                          <th>联赛</th>
+                          <th>主队</th>
+                          <th>比分</th>
+                          <th>客队</th>
+                          <th>状态</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                      </thead>
+                      <tbody>
+                        {filtered.map((m) => (
+                          <tr
+                            key={m.id}
+                            className={m.isMyTeam ? 'my-team-row' : ''}
+                          >
+                            <td className="time">{m.beijingTime}</td>
+                            <td>
+                              <span className="league-badge">
+                                {m.competition}
+                              </span>
+                            </td>
+                            <td>{m.homeTeam}</td>
+                            <td className="score">
+                              {m.homeScore != null
+                                ? `${m.homeScore} - ${m.awayScore}`
+                                : '未开始'}
+                            </td>
+                            <td>{m.awayTeam}</td>
+                            <td>
+                              <span
+                                className={`status ${
+                                  m.status === 'FINISHED'
+                                    ? 'done'
+                                    : m.status === 'IN_PLAY'
+                                    ? 'live'
+                                    : 'upcoming'
+                                }`}
+                              >
+                                {m.status === 'FINISHED'
+                                  ? '已结束'
+                                  : m.status === 'IN_PLAY'
+                                  ? '进行中'
+                                  : '未开始'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
             </section>
 
+            {/* 积分榜 */}
             <section className="section">
-              <h2>🏆 积分榜</h2>
-              {footballStandings.length === 0 ? (
-                <p className="empty">暂无积分榜数据</p>
-              ) : (
-                <div className="table-wrap">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>联赛</th>
-                        <th>#</th>
-                        <th>球队</th>
-                        <th>场次</th>
-                        <th>胜</th>
-                        <th>平</th>
-                        <th>负</th>
-                        <th>净胜球</th>
-                        <th>积分</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {footballStandings.map((s, i) => (
-                        <tr
-                          key={i}
-                          className={s.isMyTeam ? 'my-team-row' : ''}
-                        >
-                          <td>
-                            <span className="league-badge">
-                              {s.league}
-                            </span>
-                          </td>
-                          <td className="rank">{s.position}</td>
-                          <td className="team-name">{s.team}</td>
-                          <td>{s.played}</td>
-                          <td>{s.won}</td>
-                          <td>{s.drawn}</td>
-                          <td>{s.lost}</td>
-                          <td>{s.goalDifference}</td>
-                          <td className="points">{s.points}</td>
+              <h2>
+                🏆 积分榜
+                {footballSubTab !== 'all'
+                  ? `（${footballSubTab}）`
+                  : '（全部联赛）'}
+              </h2>
+              {(() => {
+                const filtered =
+                  footballSubTab === 'all'
+                    ? footballStandings
+                    : footballStandings.filter(
+                        (s) => s.league === footballSubTab
+                      );
+                if (filtered.length === 0) {
+                  return <p className="empty">暂无积分榜数据</p>;
+                }
+                return (
+                  <div className="table-wrap">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>联赛</th>
+                          <th>#</th>
+                          <th>球队</th>
+                          <th>场次</th>
+                          <th>胜</th>
+                          <th>平</th>
+                          <th>负</th>
+                          <th>净胜球</th>
+                          <th>积分</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                      </thead>
+                      <tbody>
+                        {filtered.map((s, i) => (
+                          <tr
+                            key={i}
+                            className={s.isMyTeam ? 'my-team-row' : ''}
+                          >
+                            <td>
+                              <span className="league-badge">{s.league}</span>
+                            </td>
+                            <td className="rank">{s.position}</td>
+                            <td className="team-name">{s.team}</td>
+                            <td>{s.played}</td>
+                            <td>{s.won}</td>
+                            <td>{s.drawn}</td>
+                            <td>{s.lost}</td>
+                            <td>{s.goalDifference}</td>
+                            <td className="points">{s.points}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
             </section>
           </div>
         )}
@@ -686,11 +780,11 @@ function App() {
         {/* ========== F1 板块 ========== */}
         {activeTab === 'f1' && (
           <div className="tab-content">
-            {/* 当前大奖赛信息 */}
             {f1CurrentMeeting && (
               <section className="section meeting-banner">
                 <h2>
-                  🏁 {f1CurrentMeeting.meeting_official_name ||
+                  🏁{' '}
+                  {f1CurrentMeeting.meeting_official_name ||
                     f1CurrentMeeting.meeting_name}
                 </h2>
                 <p className="meeting-meta">
@@ -701,7 +795,6 @@ function App() {
               </section>
             )}
 
-            {/* 未来两场大奖赛 */}
             {f1UpcomingMeetings.length > 0 && (
               <section className="section">
                 <h2>📅 未来赛程</h2>
@@ -721,7 +814,6 @@ function App() {
             )}
 
             <div className="f1-grid">
-              {/* 排位赛 */}
               <section className="section">
                 <h2>🏁 排位赛发车顺位</h2>
                 {f1Grid.length === 0 ? (
@@ -736,7 +828,9 @@ function App() {
                         <span className="position">P{g.position}</span>
                         <span className="driver-name">{g.driverName}</span>
                         <span className="lap-time">
-                          {g.lap_duration ? `${g.lap_duration.toFixed(3)}s` : ''}
+                          {g.lap_duration
+                            ? `${g.lap_duration.toFixed(3)}s`
+                            : ''}
                         </span>
                       </li>
                     ))}
@@ -744,7 +838,6 @@ function App() {
                 )}
               </section>
 
-              {/* 正赛结果 */}
               <section className="section">
                 <h2>🏆 正赛结果</h2>
                 {f1Results.length === 0 ? (
@@ -767,7 +860,6 @@ function App() {
                 )}
               </section>
 
-              {/* 车手积分 */}
               <section className="section">
                 <h2>🏅 车手积分榜</h2>
                 {f1DriverStandings.length === 0 ? (
@@ -775,10 +867,7 @@ function App() {
                 ) : (
                   <ul className="f1-list">
                     {f1DriverStandings.map((d, i) => (
-                      <li
-                        key={d.driver_number || i}
-                        className="f1-item"
-                      >
+                      <li key={d.driver_number || i} className="f1-item">
                         <span className="position">{i + 1}</span>
                         <span className="driver-name">{d.driverName}</span>
                         <span className="points-badge">
@@ -790,7 +879,6 @@ function App() {
                 )}
               </section>
 
-              {/* 车队积分 */}
               <section className="section">
                 <h2>🏅 车队积分榜</h2>
                 {f1TeamStandings.length === 0 ? (
@@ -818,7 +906,7 @@ function App() {
 
       <footer className="footer">
         <p>
-          数据来源：balldontlie API · OpenF1 API · football-data.org |
+          数据来源：balldontlie API · OpenF1 API · TheSportsDB |
           时间均为北京时间
         </p>
       </footer>
