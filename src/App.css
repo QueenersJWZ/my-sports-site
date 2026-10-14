@@ -29,13 +29,21 @@ body {
   margin-bottom: 24px;
 }
 
-.header h1 {
+.site-title {
   font-family: 'Airstrike', 'Roboto', sans-serif;
-  font-size: 40px;             /* Airstrike 字比较窄，可以稍大一点 */
-  font-weight: normal;         /* Airstrike 只有 normal 字重 */
+  font-size: 50px;
+  font-weight: normal;
   letter-spacing: 2px;
   margin-bottom: 6px;
-  color: #2563eb;
+  color: #06d1d4;              /* 青色 */
+  line-height: 1.1;
+}
+
+.site-title .big-letter {
+  font-size: 1.45em;           /* 比普通字母大 45% */
+  color: #0891b2;              /* 稍深一点的青色，形成层次感 */
+  vertical-align: -0.05em;     /* 微调对齐 */
+  display: inline-block;
 }
 
 .header p {
