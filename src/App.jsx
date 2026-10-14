@@ -433,7 +433,7 @@ function App() {
   return (
     <div className="app">
       <header className="header">
-        <h1>🏆 我的体育资讯</h1>
+        <h1>Queeners Sports Hub</h1>
         <p>过去 14 天 · 未来 14 天 | 北京时间</p>
       </header>
 
