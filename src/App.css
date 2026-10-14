@@ -6,133 +6,134 @@
 
 body {
   font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-  background: #f5f7fa;
+  background: #f0f2f5;
   color: #1a1a1a;
 }
 
 .app {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 20px 16px;
 }
 
 .header {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .header h1 {
-  font-size: 32px;
-  margin-bottom: 8px;
+  font-size: 28px;
+  margin-bottom: 6px;
 }
 
 .header p {
   color: #666;
+  font-size: 14px;
+}
+
+/* Tab 导航 */
+.tabs {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.tab {
+  padding: 10px 24px;
+  border: 2px solid #ddd;
+  border-radius: 24px;
+  background: #fff;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.tab.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+  font-weight: 600;
 }
 
 .loading {
   text-align: center;
-  padding: 80px 0;
+  padding: 100px 0;
   color: #666;
   font-size: 18px;
 }
 
-.main {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 24px;
+.empty {
+  text-align: center;
+  color: #999;
+  padding: 24px 0;
+  font-size: 14px;
 }
 
-.section h2 {
-  font-size: 20px;
-  margin-bottom: 12px;
-}
-
-.card {
+/* 板块 */
+.section {
   background: #fff;
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.card h3 {
-  font-size: 18px;
-  margin-bottom: 4px;
-}
-
-.subtitle {
-  color: #888;
-  font-size: 13px;
-  margin-bottom: 8px;
-}
-
-.record {
-  color: #2563eb;
-  font-weight: 600;
-  font-size: 14px;
+.section h2 {
+  font-size: 17px;
   margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #f0f0f0;
 }
 
-.card h4 {
-  font-size: 14px;
+/* 表格 */
+.table-wrap {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table th {
+  text-align: left;
+  padding: 10px 8px;
+  background: #f8fafc;
   color: #555;
-  margin: 12px 0 8px;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 6px;
-}
-
-.games-list,
-.standings-list {
-  list-style: none;
-}
-
-.game-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px dashed #eee;
-  font-size: 14px;
-}
-
-.game-item:last-child {
-  border-bottom: none;
-}
-
-.opponent {
-  flex: 1;
-  color: #333;
-}
-
-.result {
   font-weight: 600;
-  margin-right: 12px;
+  white-space: nowrap;
 }
 
-.result.win {
-  color: #16a34a;
+.data-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #f0f0f0;
+  white-space: nowrap;
 }
 
-.result.loss {
-  color: #dc2626;
+.data-table tbody tr:hover {
+  background: #f8fafc;
 }
 
-.date {
-  color: #999;
+.time {
+  color: #666;
   font-size: 12px;
 }
 
-.standing-item {
-  display: grid;
-  grid-template-columns: 40px 1fr 1fr 70px;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px dashed #eee;
-  font-size: 14px;
+.score {
+  font-weight: 700;
+  color: #2563eb;
 }
 
-.standing-item:last-child {
-  border-bottom: none;
+.stat {
+  font-weight: 600;
+  color: #16a34a;
 }
 
 .rank {
@@ -140,24 +141,139 @@ body {
   color: #2563eb;
 }
 
-.driver {
+.team-name {
   font-weight: 500;
 }
 
-.team {
-  color: #888;
+.points {
+  font-weight: 700;
+  color: #16a34a;
+}
+
+/* 状态标签 */
+.status {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.status.done {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.status.live {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.status.upcoming {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+/* NBA 关注球队列表 */
+.game-list {
+  list-style: none;
+}
+
+.game-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px dashed #eee;
   font-size: 13px;
 }
 
-.points {
-  text-align: right;
+.game-item:last-child {
+  border-bottom: none;
+}
+
+.game-item .date {
+  color: #666;
+  font-size: 12px;
+  min-width: 130px;
+}
+
+.matchup {
+  flex: 1;
+}
+
+.score-badge {
+  padding: 3px 10px;
+  background: #eff6ff;
+  color: #2563eb;
+  border-radius: 10px;
   font-weight: 600;
+  font-size: 12px;
+}
+
+/* F1 网格布局 */
+.f1-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.f1-list {
+  list-style: none;
+}
+
+.f1-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px dashed #eee;
+  font-size: 13px;
+}
+
+.f1-item:last-child {
+  border-bottom: none;
+}
+
+.f1-item .position {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.driver-name {
+  flex: 1;
+}
+
+.lap-time {
+  color: #666;
+  font-size: 12px;
+}
+
+.status-text {
+  color: #888;
+  font-size: 12px;
+}
+
+.points-badge {
+  padding: 2px 8px;
+  background: #f0fdf4;
   color: #16a34a;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 12px;
 }
 
 .footer {
   text-align: center;
-  margin-top: 40px;
+  margin-top: 30px;
   color: #999;
-  font-size: 13px;
+  font-size: 12px;
 }
