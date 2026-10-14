@@ -1,4 +1,3 @@
-// api/nba.js
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -17,8 +16,13 @@ export default async function handler(req, res) {
     if (stats === 'true') {
       url = `https://api.balldontlie.io/v1/stats?seasons[]=${seasons}&per_page=20`;
     } else {
-      url = `https://api.balldontlie.io/v1/games?dates[]=${dates}&per_page=100`;
+      // ✅ 关键修复：把逗号分隔的日期拆成多个 dates[] 参数
+      const dateArr = (dates || '').split(',').filter(Boolean);
+      const dateParams = dateArr.map((d) => `dates[]=${d}`).join('&');
+      url = `https://api.balldontlie.io/v1/games?${dateParams}&per_page=100`;
     }
+
+    console.log('[NBA proxy] 上游请求:', url);
 
     const response = await fetch(url, {
       headers: { Authorization: apiKey },
@@ -27,6 +31,9 @@ export default async function handler(req, res) {
     return res.status(response.status).json(data);
   } catch (error) {
     console.error('NBA 代理失败:', error);
-    return res.status(500).json({ error: 'NBA proxy failed' });
+    return res.status(500).json({
+      error: 'NBA proxy failed',
+      detail: String(error),
+    });
   }
 }
