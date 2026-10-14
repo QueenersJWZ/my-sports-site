@@ -91,6 +91,23 @@ body {
   border-bottom: 2px solid #f0f0f0;
 }
 
+/* 大奖赛横幅 */
+.meeting-banner {
+  background: linear-gradient(135deg, #1e293b, #334155);
+  color: #fff;
+}
+
+.meeting-banner h2 {
+  border-bottom-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.meeting-meta {
+  color: #cbd5e1;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
 /* 表格 */
 .table-wrap {
   overflow-x: auto;
@@ -121,6 +138,14 @@ body {
   background: #f8fafc;
 }
 
+.my-team-row {
+  background: #eff6ff;
+}
+
+.my-team-row:hover {
+  background: #dbeafe;
+}
+
 .time {
   color: #666;
   font-size: 12px;
@@ -148,6 +173,16 @@ body {
 .points {
   font-weight: 700;
   color: #16a34a;
+}
+
+/* 联赛标签 */
+.league-badge {
+  padding: 2px 8px;
+  background: #f0f9ff;
+  color: #0369a1;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 /* 状态标签 */
@@ -250,6 +285,7 @@ body {
 
 .driver-name {
   flex: 1;
+  font-weight: 500;
 }
 
 .lap-time {
@@ -269,6 +305,17 @@ body {
   border-radius: 8px;
   font-weight: 600;
   font-size: 12px;
+}
+
+.meeting-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.meeting-time {
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .footer {
