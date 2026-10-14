@@ -70,23 +70,27 @@ function App() {
   const [f1UpcomingMeetings, setF1UpcomingMeetings] = useState([]);
   const [f1CurrentMeeting, setF1CurrentMeeting] = useState(null);
 
-  // ============================================================
-  // NBA 数据获取 (balldontlie)
+    // ============================================================
+  // NBA 数据获取（通过 Vercel Serverless 代理调用 balldontlie）
   // ============================================================
   useEffect(() => {
     const fetchNbaData = async () => {
       try {
-        const apiKey = import.meta.env.VITE_BALLDONTLIE_KEY || '';
-        const headers = apiKey ? { Authorization: apiKey } : {};
-
         const dates = getDateRange(14, 14);
-        const gamesRes = await fetch(
-          `https://api.balldontlie.io/v1/games?dates[]=${dates.join('&dates[]=')}&per_page=100`,
-          { headers }
-        );
+
+        // ===== 1. 比赛 =====
+        const gamesUrl = `/api/nba?dates=${dates.join(',')}`;
+        console.log('[NBA] 请求比赛:', gamesUrl);
+
+        const gamesRes = await fetch(gamesUrl);
+        console.log('[NBA] 比赛状态码:', gamesRes.status);
+
         if (gamesRes.ok) {
           const gamesJson = await gamesRes.json();
-          const games = (gamesJson.data || []).map((g) => ({
+          const rawGames = gamesJson.data || [];
+          console.log('[NBA] 原始比赛数:', rawGames.length);
+
+          const games = rawGames.map((g) => ({
             id: g.id,
             date: g.date,
             homeTeam: g.home_team.full_name,
@@ -106,12 +110,16 @@ function App() {
               g.visitorTeam.includes('Trail Blazers')
           );
           setNbaMyTeamGames(myTeams);
+        } else {
+          const errText = await gamesRes.text();
+          console.error('[NBA] 比赛请求失败:', gamesRes.status, errText);
         }
 
-        const statsRes = await fetch(
-          'https://api.balldontlie.io/v1/stats?seasons[]=2025&per_page=20',
-          { headers }
-        );
+        // ===== 2. 球员统计 =====
+        const statsUrl = `/api/nba?stats=true&seasons=2025`;
+        const statsRes = await fetch(statsUrl);
+        console.log('[NBA] 统计状态码:', statsRes.status);
+
         if (statsRes.ok) {
           const statsJson = await statsRes.json();
           const stats = (statsJson.data || []).map((s) => ({
