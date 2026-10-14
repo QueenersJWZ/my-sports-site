@@ -324,3 +324,34 @@ body {
   color: #999;
   font-size: 12px;
 }
+
+.subtabs {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.subtab {
+  padding: 6px 18px;
+  border: 1px solid #ddd;
+  border-radius: 18px;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #555;
+}
+
+.subtab:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.subtab.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+  font-weight: 600;
+}
