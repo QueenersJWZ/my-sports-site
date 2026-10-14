@@ -131,24 +131,21 @@ function App() {
     fetchNbaData();
   }, []);
 
-  // ============================================================
-  // 足球数据获取 (TheSportsDB - 免费、无需 token、支持 CORS)
-  // 联赛 ID：英超 4328 / 西甲 4335 / 欧冠 4480 / 中超 4359
+    // ============================================================
+  // 足球数据获取 (通过 Vercel Serverless 代理调用 football-data.org)
+  // 免费层覆盖：英超 PL / 西甲 PD / 欧冠 CL
   // ============================================================
   useEffect(() => {
     const fetchFootballData = async () => {
       try {
-        const API_KEY = '3';
-        const BASE = `https://www.thesportsdb.com/api/v1/json/${API_KEY}`;
-
         const leagues = [
-          { id: '4328', name: '英超', teams: ['Manchester City'] },
-          { id: '4335', name: '西甲', teams: ['Barcelona'] },
-          { id: '4480', name: '欧冠', teams: ['Manchester City', 'Barcelona'] },
+          { code: 'PL', name: '英超', teams: ['Manchester City FC'] },
+          { code: 'PD', name: '西甲', teams: ['FC Barcelona'] },
           {
-            id: '4359',
-            name: '中超',
-            teams: ['Shandong Taishan', 'Shandong Luneng'],
+            code: 'CL',
+            name: '欧冠',
+            teams: ['Manchester City FC', 'FC Barcelona'],
+            hasStandings: false,
           },
         ];
 
@@ -156,133 +153,81 @@ function App() {
         const allStandings = [];
 
         const today = new Date();
-        const rangeStart = new Date(today);
-        rangeStart.setDate(today.getDate() - 14);
-        const rangeEnd = new Date(today);
-        rangeEnd.setDate(today.getDate() + 14);
+        const dateFrom = new Date(today);
+        dateFrom.setDate(today.getDate() - 14);
+        const dateTo = new Date(today);
+        dateTo.setDate(today.getDate() + 14);
+        const fmt = (d) => d.toISOString().split('T')[0];
 
         for (const league of leagues) {
-          // ===== 1. 过去比赛 =====
+          // ===== 1. 比赛 =====
           try {
-            const pastRes = await fetch(
-              `${BASE}/eventspastleague.php?id=${league.id}`
-            );
-            if (pastRes.ok) {
-              const pastJson = await pastRes.json();
-              const pastEvents = pastJson.events || [];
-              console.log(
-                `[足球] ${league.name} 过去比赛原始数:`,
-                pastEvents.length
-              );
+            const url = `/api/football?competition=${league.code}&dateFrom=${fmt(dateFrom)}&dateTo=${fmt(dateTo)}`;
+            console.log(`[足球] 请求 ${league.name}:`, url);
 
-              for (const e of pastEvents) {
-                if (!e.dateEvent) continue;
-                const eventDate = new Date(
-                  `${e.dateEvent}T${e.strTime || '00:00:00'}Z`
-                );
-                if (eventDate < rangeStart || eventDate > rangeEnd) continue;
+            const res = await fetch(url);
+            console.log(`[足球] ${league.name} 状态码:`, res.status);
 
-                // 只要比分不为空，就认为比赛已结束
-                const hasScore =
-                  e.intHomeScore != null && e.intAwayScore != null;
+            if (res.ok) {
+              const json = await res.json();
+              const rawMatches = json.matches || [];
+              console.log(`[足球] ${league.name} 原始比赛数:`, rawMatches.length);
 
-                allMatches.push({
-                  id: e.idEvent,
-                  homeTeam: e.strHomeTeam || '',
-                  awayTeam: e.strAwayTeam || '',
-                  homeScore: hasScore ? parseInt(e.intHomeScore) : null,
-                  awayScore: hasScore ? parseInt(e.intAwayScore) : null,
-                  status: hasScore ? 'FINISHED' : 'SCHEDULED',
-                  utcDate: eventDate.toISOString(),
-                  beijingTime: toBeijingTime(eventDate),
-                  competition: league.name,
-                  isMyTeam: league.teams.some(
-                    (t) =>
-                      e.strHomeTeam?.includes(t) || e.strAwayTeam?.includes(t)
-                  ),
-                });
-              }
+              const matches = rawMatches.map((m) => ({
+                id: m.id,
+                homeTeam: m.homeTeam?.name || '',
+                awayTeam: m.awayTeam?.name || '',
+                homeScore: m.score?.fullTime?.home,
+                awayScore: m.score?.fullTime?.away,
+                status: m.status,
+                utcDate: m.utcDate,
+                beijingTime: toBeijingTime(m.utcDate),
+                competition: league.name,
+                isMyTeam:
+                  league.teams.some((t) => m.homeTeam?.name?.includes(t)) ||
+                  league.teams.some((t) => m.awayTeam?.name?.includes(t)),
+              }));
+              allMatches.push(...matches);
+            } else {
+              const errText = await res.text();
+              console.error(`[足球] ${league.name} 失败:`, res.status, errText);
             }
           } catch (e) {
-            console.error(`[足球] ${league.name} 过去比赛异常:`, e);
+            console.error(`[足球] ${league.name} 比赛异常:`, e);
           }
 
-          // ===== 2. 未来比赛 =====
-          try {
-            const nextRes = await fetch(
-              `${BASE}/eventsnextleague.php?id=${league.id}`
-            );
-            if (nextRes.ok) {
-              const nextJson = await nextRes.json();
-              const nextEvents = nextJson.events || [];
-              console.log(
-                `[足球] ${league.name} 未来比赛原始数:`,
-                nextEvents.length
-              );
-
-              for (const e of nextEvents) {
-                if (!e.dateEvent) continue;
-                const eventDate = new Date(
-                  `${e.dateEvent}T${e.strTime || '00:00:00'}Z`
-                );
-                if (eventDate < rangeStart || eventDate > rangeEnd) continue;
-
-                allMatches.push({
-                  id: e.idEvent,
-                  homeTeam: e.strHomeTeam || '',
-                  awayTeam: e.strAwayTeam || '',
-                  homeScore: null,
-                  awayScore: null,
-                  status: 'SCHEDULED',
-                  utcDate: eventDate.toISOString(),
-                  beijingTime: toBeijingTime(eventDate),
-                  competition: league.name,
-                  isMyTeam: league.teams.some(
-                    (t) =>
-                      e.strHomeTeam?.includes(t) || e.strAwayTeam?.includes(t)
-                  ),
-                });
-              }
-            }
-          } catch (e) {
-            console.error(`[足球] ${league.name} 未来比赛异常:`, e);
-          }
-
-          // ===== 3. 积分榜（欧冠结构不同，跳过） =====
-          if (league.name !== '欧冠') {
+          // ===== 2. 积分榜（欧冠跳过） =====
+          if (league.hasStandings !== false) {
             try {
-              const season = `${today.getFullYear()}-${today.getFullYear() + 1}`;
-              const standingsRes = await fetch(
-                `${BASE}/lookuptable.php?l=${league.id}&s=${season}`
-              );
-              if (standingsRes.ok) {
-                const standingsJson = await standingsRes.json();
-                const table = standingsJson.table || [];
+              const url = `/api/football?competition=${league.code}&type=standings`;
+              const res = await fetch(url);
+
+              if (res.ok) {
+                const json = await res.json();
+                const table = json.standings?.[0]?.table || [];
                 console.log(`[足球] ${league.name} 积分榜行数:`, table.length);
 
-                for (const row of table) {
-                  allStandings.push({
-                    position: parseInt(row.intRank),
-                    team: row.strTeam || '',
-                    played: parseInt(row.intPlayed),
-                    won: parseInt(row.intWin),
-                    drawn: parseInt(row.intDraw),
-                    lost: parseInt(row.intLoss),
-                    points: parseInt(row.intPoints),
-                    goalDifference: parseInt(row.intGoalDifference),
-                    league: league.name,
-                    isMyTeam: league.teams.some((t) =>
-                      row.strTeam?.includes(t)
-                    ),
-                  });
-                }
+                const standings = table.map((row) => ({
+                  position: row.position,
+                  team: row.team?.name || '',
+                  played: row.playedGames,
+                  won: row.won,
+                  drawn: row.draw,
+                  lost: row.lost,
+                  points: row.points,
+                  goalDifference: row.goalDifference,
+                  league: league.name,
+                  isMyTeam: league.teams.some((t) =>
+                    row.team?.name?.includes(t)
+                  ),
+                }));
+                allStandings.push(...standings);
               }
             } catch (e) {
               console.error(`[足球] ${league.name} 积分榜异常:`, e);
             }
           }
 
-          // 避免触发 TheSportsDB 限速
           await new Promise((r) => setTimeout(r, 300));
         }
 
@@ -629,12 +574,6 @@ function App() {
                 onClick={() => setFootballSubTab('欧冠')}
               >
                 欧冠
-              </button>
-              <button
-                className={footballSubTab === '中超' ? 'subtab active' : 'subtab'}
-                onClick={() => setFootballSubTab('中超')}
-              >
-                中超
               </button>
             </nav>
 
