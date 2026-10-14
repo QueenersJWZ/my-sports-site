@@ -134,13 +134,22 @@ function App() {
   // 足球数据获取 (football-data.org)
   // 免费层包含：英超(PL)、西甲(PD)、中超(CSL) 等
   // ============================================================
+    // ============================================================
+  // 足球数据获取 (football-data.org)
+  // 免费层包含：英超(PL)、西甲(PD)、欧冠(CL)
+  // 注意：免费层不包含中超(CSL)
+  // ============================================================
   useEffect(() => {
     const fetchFootballData = async () => {
       try {
         const token = import.meta.env.VITE_FOOTBALL_DATA_TOKEN || '';
-        const headers = token ? { 'X-Auth-Token': token } : {};
+        if (!token) {
+          console.error('❌ VITE_FOOTBALL_DATA_TOKEN 未设置，足球数据无法获取');
+          return;
+        }
+        const headers = { 'X-Auth-Token': token };
 
-        // 免费层支持的联赛：英超 PL、西甲 PD、中超 CSL
+        // 免费层支持的联赛：英超 PL、西甲 PD、欧冠 CL
         const leagues = [
           { code: 'PL', name: '英超', teams: ['Manchester City FC'], hasStandings: true },
           { code: 'PD', name: '西甲', teams: ['FC Barcelona'], hasStandings: true },
@@ -158,15 +167,20 @@ function App() {
         const fmt = (d) => d.toISOString().split('T')[0];
 
         for (const league of leagues) {
+          // ===== 1. 获取比赛 =====
           try {
-            // 1. 获取比赛（前后14天）
-            const matchesRes = await fetch(
-              `https://api.football-data.org/v4/competitions/${league.code}/matches?dateFrom=${fmt(dateFrom)}&dateTo=${fmt(dateTo)}`,
-              { headers }
-            );
+            const matchesUrl = `https://api.football-data.org/v4/competitions/${league.code}/matches?dateFrom=${fmt(dateFrom)}&dateTo=${fmt(dateTo)}`;
+            console.log(`[足球] 请求 ${league.name} 比赛:`, matchesUrl);
+
+            const matchesRes = await fetch(matchesUrl, { headers });
+            console.log(`[足球] ${league.name} 比赛状态码:`, matchesRes.status);
+
             if (matchesRes.ok) {
               const matchesJson = await matchesRes.json();
-              const matches = (matchesJson.matches || []).map((m) => ({
+              const rawMatches = matchesJson.matches || [];
+              console.log(`[足球] ${league.name} 原始比赛数:`, rawMatches.length);
+
+              const matches = rawMatches.map((m) => ({
                 id: m.id,
                 homeTeam: m.homeTeam?.name || '',
                 awayTeam: m.awayTeam?.name || '',
@@ -181,32 +195,48 @@ function App() {
                   league.teams.some((t) => m.awayTeam?.name?.includes(t)),
               }));
               allMatches.push(...matches);
+            } else {
+              const errText = await matchesRes.text();
+              console.error(`[足球] ${league.name} 比赛请求失败:`, matchesRes.status, errText);
             }
+          } catch (e) {
+            console.error(`[足球] ${league.name} 比赛异常:`, e);
+          }
 
-            // 2. 获取积分榜
-            const standingsRes = await fetch(
-              `https://api.football-data.org/v4/competitions/${league.code}/standings`,
-              { headers }
-            );
-            if (standingsRes.ok) {
-              const standingsJson = await standingsRes.json();
-              const table = standingsJson.standings?.[0]?.table || [];
-              const standings = table.map((row) => ({
-                position: row.position,
-                team: row.team?.name || '',
-                played: row.playedGames,
-                won: row.won,
-                drawn: row.draw,
-                lost: row.lost,
-                points: row.points,
-                goalDifference: row.goalDifference,
-                league: league.name,
-                isMyTeam: league.teams.some((t) => row.team?.name?.includes(t)),
-              }));
-              allStandings.push(...standings);
+          // ===== 2. 获取积分榜（仅联赛，欧冠不取） =====
+          if (league.hasStandings) {
+            try {
+              const standingsUrl = `https://api.football-data.org/v4/competitions/${league.code}/standings`;
+              console.log(`[足球] 请求 ${league.name} 积分榜:`, standingsUrl);
+
+              const standingsRes = await fetch(standingsUrl, { headers });
+              console.log(`[足球] ${league.name} 积分榜状态码:`, standingsRes.status);
+
+              if (standingsRes.ok) {
+                const standingsJson = await standingsRes.json();
+                const table = standingsJson.standings?.[0]?.table || [];
+                console.log(`[足球] ${league.name} 积分榜行数:`, table.length);
+
+                const standings = table.map((row) => ({
+                  position: row.position,
+                  team: row.team?.name || '',
+                  played: row.playedGames,
+                  won: row.won,
+                  drawn: row.draw,
+                  lost: row.lost,
+                  points: row.points,
+                  goalDifference: row.goalDifference,
+                  league: league.name,
+                  isMyTeam: league.teams.some((t) => row.team?.name?.includes(t)),
+                }));
+                allStandings.push(...standings);
+              } else {
+                const errText = await standingsRes.text();
+                console.error(`[足球] ${league.name} 积分榜请求失败:`, standingsRes.status, errText);
+              }
+            } catch (e) {
+              console.error(`[足球] ${league.name} 积分榜异常:`, e);
             }
-          } catch (leagueErr) {
-            console.warn(`${league.name} 数据获取失败:`, leagueErr);
           }
         }
 
@@ -214,6 +244,7 @@ function App() {
           (a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime()
         );
 
+        console.log(`[足球] 最终比赛总数: ${allMatches.length}, 积分榜总行数: ${allStandings.length}`);
         setFootballMatches(allMatches);
         setFootballStandings(allStandings);
       } catch (err) {
