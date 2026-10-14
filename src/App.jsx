@@ -10,64 +10,83 @@ function App() {
   // ============ NBA 数据（动态获取）============
   useEffect(() => {
     const fetchNbaData = async () => {
-      try {
-        // balldontlie API：凯尔特人队 ID = 2
-        // 注意：如果返回 401，需要在 https://www.balldontlie.io 免费注册并拿到 API Key
-        const apiKey = import.meta.env.VITE_BALLDONTLIE_KEY || '';
-        const headers = apiKey ? { Authorization: apiKey } : {};
+  try {
+    const apiKey = import.meta.env.VITE_BALLDONTLIE_KEY || '';
+    const headers = apiKey ? { Authorization: apiKey } : {};
 
-        const res = await fetch(
-          'https://api.balldontlie.io/v1/games?team_ids[]=2&per_page=10',
-          { headers }
-        );
+    // 1. 计算日期范围：今天和过去6天，总共一周
+    const today = new Date();
+    const pastDate = new Date();
+    pastDate.setDate(today.getDate() - 6);
 
-        if (!res.ok) {
-          throw new Error(`API 返回错误：${res.status}`);
-        }
+    const formatDate = (date) => date.toISOString().split('T')[0];
 
-        const json = await res.json();
+    const startDate = formatDate(pastDate);
+    const endDate = formatDate(today);
 
-        const recentGames = (json.data || []).map((game) => {
-          const isHome = game.home_team.id === 2;
-          const teamScore = isHome ? game.home_team_score : game.visitor_team_score;
-          const oppScore = isHome ? game.visitor_team_score : game.home_team_score;
-          const opponent = isHome
-            ? game.visitor_team.full_name
-            : game.home_team.full_name;
-          const result = teamScore > oppScore ? '胜' : '负';
+    // 2. 修改 API 请求：使用 dates[] 参数并设置 per_page
+    //    dates[] 支持传入一个日期范围，如 dates[]=2025-12-01&dates[]=2025-12-07
+    //    这里我们获取过去一周的比赛。如果要看今天的，可以把 dates[] 只设成今天。
+    const res = await fetch(
+      `https://api.balldontlie.io/v1/games?team_ids[]=2&per_page=25&dates[]=${startDate}&dates[]=${endDate}`,
+      { headers }
+    );
 
-          return {
-            opponent,
-            result: `${result} ${teamScore}-${oppScore}`,
-            date: new Date(game.date).toLocaleDateString('zh-CN'),
-          };
-        });
+    if (!res.ok) {
+      throw new Error(`API 返回错误：${res.status}`);
+    }
 
-        // 统计最近 5 场的胜负
-        const last5 = recentGames.slice(0, 5);
-        const wins = last5.filter((g) => g.result.startsWith('胜')).length;
-        const losses = last5.length - wins;
+    const json = await res.json();
 
-        setNbaData({
-          team: '波士顿凯尔特人',
-          conference: '东部联盟 · 大西洋赛区',
-          record: `近 5 场：${wins} 胜 ${losses} 负`,
-          recentGames,
-        });
-      } catch (err) {
-        console.error('NBA 数据获取失败:', err);
-        // 失败时用静态数据兜底，页面不至于空白
-        setNbaData({
-          team: '波士顿凯尔特人',
-          conference: '东部联盟 · 大西洋赛区',
-          record: '数据暂时无法获取',
-          recentGames: [
-            { opponent: '迈阿密热火', result: '胜 110-105', date: '—' },
-            { opponent: '纽约尼克斯', result: '负 98-102', date: '—' },
-          ],
-        });
-      }
-    };
+    // 3. 处理返回数据（逻辑和之前一样，但确保按日期降序排列）
+    const recentGames = (json.data || [])
+      .map((game) => {
+        const isHome = game.home_team.id === 2;
+        const teamScore = isHome ? game.home_team_score : game.visitor_team_score;
+        const oppScore = isHome ? game.visitor_team_score : game.home_team_score;
+        const opponent = isHome
+          ? game.visitor_team.full_name
+          : game.home_team.full_name;
+        const result = teamScore > oppScore ? '胜' : '负';
+
+        return {
+          opponent,
+          result: `${result} ${teamScore}-${oppScore}`,
+          date: new Date(game.date).toLocaleDateString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          }),
+          rawDate: game.date, // 保留原始日期用于排序
+        };
+      })
+      // 按日期从新到旧排序，确保最近的在最上面
+      .sort((a, b) => new Date(b.rawDate) - new Date(a.rawDate));
+
+    // 4. 计算近期战绩（这里取最近5场）
+    const last5 = recentGames.slice(0, 5);
+    const wins = last5.filter((g) => g.result.startsWith('胜')).length;
+    const losses = last5.length - wins;
+
+    setNbaData({
+      team: '波士顿凯尔特人',
+      conference: '东部联盟 · 大西洋赛区',
+      record: `近 5 场：${wins} 胜 ${losses} 负`,
+      recentGames, // 这里把所有获取到的比赛都传过去，前端可以控制显示多少条
+    });
+  } catch (err) {
+    console.error('NBA 数据获取失败:', err);
+    setNbaData({
+      team: '波士顿凯尔特人',
+      conference: '东部联盟 · 大西洋赛区',
+      record: '数据暂时无法获取',
+      recentGames: [
+        { opponent: '迈阿密热火', result: '胜 110-105', date: '—' },
+        { opponent: '纽约尼克斯', result: '负 98-102', date: '—' },
+      ],
+    });
+  }
+};
 
     fetchNbaData();
   }, []);
