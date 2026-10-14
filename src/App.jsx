@@ -1,318 +1,203 @@
-import React, { useState, useEffect } from 'react';
-import { Trophy, Calendar, Clock, Loader2, Activity, MapPin, Medal } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import './App.css';
 
-export default function App() {
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('nba');
-
-  // 状态数据
+function App() {
   const [nbaData, setNbaData] = useState(null);
   const [cslData, setCslData] = useState(null);
   const [f1Data, setF1Data] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // 1. 实时时钟
+  // ============ NBA 数据（动态获取）============
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // 2. 获取数据的核心逻辑 (已替换为你提供的新 API)
-  useEffect(() => {
-    const fetchSportsData = async () => {
-      setLoading(true);
-      
+    const fetchNbaData = async () => {
       try {
-        // ==========================================
-        // 【测试你提供的新 SportAPI7 接口】
-        // ==========================================
-        try {
-          const response = await fetch('https://sportapi7.p.rapidapi.com/api/v1/player/817181/unique-tournament/132/season/65360/ratings', {
-            method: 'GET',
-            headers: {
-              'x-rapidapi-host': 'sportapi7.p.rapidapi.com',
-              'x-rapidapi-key': '04a63d4b4amsh34d76e9221bc0c7p100f24jsn7e932263e794'
-            }
-          });
-          const json = await response.json();
-          console.log("SportAPI7 真实返回数据:", json); 
-          // 提示：你可以按 F12 打开控制台查看这个 json 里面到底装了什么
-        } catch (e) {
-          console.error("SportAPI7 请求失败 (请检查是否已在RapidAPI订阅免费套餐):", e);
+        // balldontlie API：凯尔特人队 ID = 2
+        // 注意：如果返回 401，需要在 https://www.balldontlie.io 免费注册并拿到 API Key
+        const apiKey = import.meta.env.VITE_BALLDONTLIE_KEY || '';
+        const headers = apiKey ? { Authorization: apiKey } : {};
+
+        const res = await fetch(
+          'https://api.balldontlie.io/v1/games?team_ids[]=2&per_page=10',
+          { headers }
+        );
+
+        if (!res.ok) {
+          throw new Error(`API 返回错误：${res.status}`);
         }
 
-        // ==========================================
-        // 临时数据填充区 (保证页面正常显示)
-        // ==========================================
+        const json = await res.json();
+
+        const recentGames = (json.data || []).map((game) => {
+          const isHome = game.home_team.id === 2;
+          const teamScore = isHome ? game.home_team_score : game.visitor_team_score;
+          const oppScore = isHome ? game.visitor_team_score : game.home_team_score;
+          const opponent = isHome
+            ? game.visitor_team.full_name
+            : game.home_team.full_name;
+          const result = teamScore > oppScore ? '胜' : '负';
+
+          return {
+            opponent,
+            result: `${result} ${teamScore}-${oppScore}`,
+            date: new Date(game.date).toLocaleDateString('zh-CN'),
+          };
+        });
+
+        // 统计最近 5 场的胜负
+        const last5 = recentGames.slice(0, 5);
+        const wins = last5.filter((g) => g.result.startsWith('胜')).length;
+        const losses = last5.length - wins;
+
         setNbaData({
-          team: "波士顿凯尔特人",
-          record: "50胜 14负 (东部第1)",
-          nextGame: { opponent: "丹佛掘金", date: "明天 10:00 AM", location: "波尔体育馆", isHome: false },
+          team: '波士顿凯尔特人',
+          conference: '东部联盟 · 大西洋赛区',
+          record: `近 5 场：${wins} 胜 ${losses} 负`,
+          recentGames,
+        });
+      } catch (err) {
+        console.error('NBA 数据获取失败:', err);
+        // 失败时用静态数据兜底，页面不至于空白
+        setNbaData({
+          team: '波士顿凯尔特人',
+          conference: '东部联盟 · 大西洋赛区',
+          record: '数据暂时无法获取',
           recentGames: [
-            { opponent: "金州勇士", result: "胜 140-88", date: "3月4日" },
-            { opponent: "达拉斯独行侠", result: "胜 138-110", date: "3月2日" }
-          ]
+            { opponent: '迈阿密热火', result: '胜 110-105', date: '—' },
+            { opponent: '纽约尼克斯', result: '负 98-102', date: '—' },
+          ],
         });
-
-        setCslData({
-          team: "山东泰山",
-          record: "2胜 1平 0负 (中超第2)",
-          nextGame: { opponent: "上海海港", date: "3月18日 19:35", location: "济南奥体中心", isHome: true },
-          recentGames: [
-            { opponent: "北京国安", result: "平 0-0", date: "3月9日" },
-            { opponent: "长春亚泰", result: "胜 4-2", date: "3月1日" }
-          ]
-        });
-
-        setF1Data({
-          season: "2026赛季",
-          nextRace: { name: "澳大利亚大奖赛", date: "3月15日 14:00", location: "阿尔伯特公园赛道" },
-          driverStandings: [
-            { pos: 1, driver: "马克斯·维斯塔潘", team: "红牛", points: 51 },
-            { pos: 2, driver: "查尔斯·勒克莱尔", team: "法拉利", points: 47 },
-            { pos: 3, driver: "刘易斯·汉密尔顿", team: "法拉利", points: 35 }
-          ]
-        });
-
-      } catch (error) {
-        console.error("获取数据过程发生错误:", error);
-      } finally {
-        setLoading(false);
       }
     };
 
-    fetchSportsData();
-    
+    fetchNbaData();
   }, []);
 
-  // 加载中动画组件
-  const LoadingSpinner = () => (
-    <div className="flex flex-col items-center justify-center py-32">
-      <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-      <p className="text-gray-500 font-medium text-lg">正在连接体育数据中心...</p>
-    </div>
-  );
+  // ============ 中超数据（暂时静态，等你找到 API 再替换）============
+  useEffect(() => {
+    setCslData({
+      team: '上海海港',
+      record: '近 2 场：1 胜 1 平',
+      recentGames: [
+        { opponent: '北京国安', result: '胜 2-1', date: '2026-03-10' },
+        { opponent: '山东泰山', result: '平 1-1', date: '2026-03-05' },
+      ],
+    });
+  }, []);
 
-  // 渲染 NBA 模块
-  const renderNBA = () => (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-      className="space-y-6"
-    >
-      <div className="bg-gradient-to-r from-green-700 to-green-600 text-white p-6 rounded-2xl shadow-lg flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold mb-2">{nbaData.team}</h2>
-          <p className="text-green-100 flex items-center text-lg">
-            <Trophy className="w-5 h-5 mr-2" /> 战绩: {nbaData.record}
-          </p>
-        </div>
-        <div className="hidden md:block text-6xl opacity-20">🏀</div>
-      </div>
+  // ============ F1 数据（暂时静态）============
+  useEffect(() => {
+    setF1Data({
+      season: '2026 赛季',
+      standings: [
+        { driver: 'Max Verstappen', team: 'Red Bull Racing', points: 51 },
+        { driver: 'Charles Leclerc', team: 'Ferrari', points: 47 },
+        { driver: 'Sergio Perez', team: 'Red Bull Racing', points: 36 },
+        { driver: 'Lando Norris', team: 'McLaren', points: 33 },
+        { driver: 'Carlos Sainz', team: 'Ferrari', points: 28 },
+      ],
+    });
+  }, []);
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="text-xl font-bold mb-4 flex items-center text-gray-800">
-            <Calendar className="w-6 h-6 mr-2 text-green-600" /> 下一场比赛
-          </h3>
-          <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
-            <p className="font-bold text-xl text-gray-800 mb-2">{nbaData.team} VS {nbaData.nextGame.opponent}</p>
-            <div className="space-y-2 text-gray-600">
-              <p className="flex items-center"><Clock className="w-4 h-4 mr-2" /> {nbaData.nextGame.date}</p>
-              <p className="flex items-center"><MapPin className="w-4 h-4 mr-2" /> {nbaData.nextGame.location}</p>
-            </div>
-          </div>
-        </div>
+  // 三个数据都到了才结束 loading
+  useEffect(() => {
+    if (nbaData && cslData && f1Data) {
+      setLoading(false);
+    }
+  }, [nbaData, cslData, f1Data]);
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="text-xl font-bold mb-4 flex items-center text-gray-800">
-            <Activity className="w-6 h-6 mr-2 text-green-600" /> 近期战况
-          </h3>
-          <div className="space-y-3">
-            {nbaData.recentGames.map((game, idx) => (
-              <div key={idx} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl border border-gray-100">
-                <div>
-                  <p className="font-semibold text-gray-800">VS {game.opponent}</p>
-                  <p className="text-sm text-gray-500">{game.date}</p>
-                </div>
-                <span className={`px-4 py-1.5 rounded-full text-sm font-bold ${
-                  game.result.includes('胜') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                }`}>
-                  {game.result}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-
-  // 渲染 足球 模块
-  const renderCSL = () => (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-      className="space-y-6"
-    >
-      <div className="bg-gradient-to-r from-orange-600 to-red-500 text-white p-6 rounded-2xl shadow-lg flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold mb-2">{cslData.team}</h2>
-          <p className="text-orange-100 flex items-center text-lg">
-            <Trophy className="w-5 h-5 mr-2" /> 战绩: {cslData.record}
-          </p>
-        </div>
-        <div className="hidden md:block text-6xl opacity-20">⚽</div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="text-xl font-bold mb-4 flex items-center text-gray-800">
-            <Calendar className="w-6 h-6 mr-2 text-orange-600" /> 下一场比赛
-          </h3>
-          <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
-            <p className="font-bold text-xl text-gray-800 mb-2">{cslData.team} VS {cslData.nextGame.opponent}</p>
-            <div className="space-y-2 text-gray-600">
-              <p className="flex items-center"><Clock className="w-4 h-4 mr-2" /> {cslData.nextGame.date}</p>
-              <p className="flex items-center"><MapPin className="w-4 h-4 mr-2" /> {cslData.nextGame.location}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="text-xl font-bold mb-4 flex items-center text-gray-800">
-            <Activity className="w-6 h-6 mr-2 text-orange-600" /> 近期战况
-          </h3>
-          <div className="space-y-3">
-            {cslData.recentGames.map((game, idx) => (
-              <div key={idx} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl border border-gray-100">
-                <div>
-                  <p className="font-semibold text-gray-800">VS {game.opponent}</p>
-                  <p className="text-sm text-gray-500">{game.date}</p>
-                </div>
-                <span className={`px-4 py-1.5 rounded-full text-sm font-bold ${
-                  game.result.includes('胜') ? 'bg-orange-100 text-orange-700' : 
-                  game.result.includes('平') ? 'bg-gray-200 text-gray-700' : 'bg-red-100 text-red-700'
-                }`}>
-                  {game.result}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-
-  // 渲染 F1 模块
-  const renderF1 = () => (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-      className="space-y-6"
-    >
-      <div className="bg-gradient-to-r from-red-700 to-gray-900 text-white p-6 rounded-2xl shadow-lg flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold mb-2">F1 {f1Data.season}</h2>
-          <p className="text-red-100 flex items-center text-lg">
-            <MapPin className="w-5 h-5 mr-2" /> 下一站: {f1Data.nextRace.name}
-          </p>
-        </div>
-        <div className="hidden md:block text-6xl opacity-20">🏎️</div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="text-xl font-bold mb-4 flex items-center text-gray-800">
-            <Calendar className="w-6 h-6 mr-2 text-red-600" /> 赛事预告
-          </h3>
-          <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
-            <p className="font-bold text-xl text-gray-800 mb-2">{f1Data.nextRace.name}</p>
-            <div className="space-y-2 text-gray-600">
-              <p className="flex items-center"><Clock className="w-4 h-4 mr-2" /> {f1Data.nextRace.date}</p>
-              <p className="flex items-center"><MapPin className="w-4 h-4 mr-2" /> {f1Data.nextRace.location}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="text-xl font-bold mb-4 flex items-center text-gray-800">
-            <Medal className="w-6 h-6 mr-2 text-red-600" /> 车手积分榜
-          </h3>
-          <div className="space-y-3">
-            {f1Data.driverStandings.map((driver) => (
-              <div key={driver.pos} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
-                <div className="flex items-center">
-                  <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold mr-3 ${
-                    driver.pos === 1 ? 'bg-yellow-100 text-yellow-700' : 
-                    driver.pos === 2 ? 'bg-gray-200 text-gray-700' : 
-                    driver.pos === 3 ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-500'
-                  }`}>
-                    {driver.pos}
-                  </span>
-                  <div>
-                    <p className="font-bold text-gray-800">{driver.driver}</p>
-                    <p className="text-xs text-gray-500">{driver.team}</p>
-                  </div>
-                </div>
-                <span className="font-bold text-lg text-gray-800">{driver.points} <span className="text-sm font-normal text-gray-500">pts</span></span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
+  if (loading) {
+    return <div className="loading">加载中...</div>;
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100 font-sans pb-12">
-      {/* 顶部导航栏 */}
-      <header className="bg-blue-900 text-white py-6 shadow-md">
-        <div className="max-w-5xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center">
-          <div className="flex items-center mb-4 md:mb-0">
-            <Activity className="w-8 h-8 mr-3 text-blue-400" />
-            <h1 className="text-3xl font-extrabold tracking-tight">我的体育聚合站</h1>
-          </div>
-          <div className="flex items-center bg-blue-800/50 px-4 py-2 rounded-full border border-blue-700/50">
-            <Clock className="w-5 h-5 mr-2 text-blue-300" />
-            <span className="font-mono text-lg tracking-wide">
-              {currentTime.toLocaleTimeString('zh-CN', { hour12: false })}
-            </span>
-          </div>
-        </div>
+    <div className="app">
+      <header className="header">
+        <h1>🏆 我的体育资讯</h1>
+        <p>实时追踪你关注的球队和赛事</p>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 mt-8">
-        {/* 标签切换栏 */}
-        <div className="flex space-x-2 md:space-x-4 mb-8 bg-white p-2 rounded-2xl shadow-sm border border-gray-200 overflow-x-auto">
-          {[
-            { id: 'nba', name: 'NBA 篮球', icon: '🏀' },
-            { id: 'csl', name: '足球赛事', icon: '⚽' },
-            { id: 'f1', name: 'F1 赛车', icon: '🏎️' }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center py-3 px-4 rounded-xl font-bold text-lg transition-all duration-200 whitespace-nowrap ${
-                activeTab === tab.id 
-                  ? 'bg-blue-600 text-white shadow-md' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <span className="mr-2">{tab.icon}</span> {tab.name}
-            </button>
-          ))}
-        </div>
+      <main className="main">
+        {/* NBA */}
+        <section className="section">
+          <h2>🏀 NBA</h2>
+          {nbaData && (
+            <div className="card">
+              <h3>{nbaData.team}</h3>
+              <p className="subtitle">{nbaData.conference}</p>
+              <p className="record">{nbaData.record}</p>
+              <h4>近期比赛</h4>
+              <ul className="games-list">
+                {nbaData.recentGames.map((game, idx) => (
+                  <li key={idx} className="game-item">
+                    <span className="opponent">vs {game.opponent}</span>
+                    <span
+                      className={`result ${
+                        game.result.startsWith('胜') ? 'win' : 'loss'
+                      }`}
+                    >
+                      {game.result}
+                    </span>
+                    <span className="date">{game.date}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
 
-        {/* 内容展示区 */}
-        {loading ? (
-          <LoadingSpinner />
-        ) : (
-          <AnimatePresence mode="wait">
-            {activeTab === 'nba' && nbaData && <div key="nba">{renderNBA()}</div>}
-            {activeTab === 'csl' && cslData && <div key="csl">{renderCSL()}</div>}
-            {activeTab === 'f1' && f1Data && <div key="f1">{renderF1()}</div>}
-          </AnimatePresence>
-        )}
+        {/* 中超 */}
+        <section className="section">
+          <h2>⚽ 中超</h2>
+          {cslData && (
+            <div className="card">
+              <h3>{cslData.team}</h3>
+              <p className="record">{cslData.record}</p>
+              <h4>近期比赛</h4>
+              <ul className="games-list">
+                {cslData.recentGames.map((game, idx) => (
+                  <li key={idx} className="game-item">
+                    <span className="opponent">vs {game.opponent}</span>
+                    <span
+                      className={`result ${
+                        game.result.startsWith('胜') ? 'win' : 'loss'
+                      }`}
+                    >
+                      {game.result}
+                    </span>
+                    <span className="date">{game.date}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+
+        {/* F1 */}
+        <section className="section">
+          <h2>🏎️ F1</h2>
+          {f1Data && (
+            <div className="card">
+              <h3>{f1Data.season} 车手积分榜</h3>
+              <ul className="standings-list">
+                {f1Data.standings.map((driver, idx) => (
+                  <li key={idx} className="standing-item">
+                    <span className="rank">#{idx + 1}</span>
+                    <span className="driver">{driver.driver}</span>
+                    <span className="team">{driver.team}</span>
+                    <span className="points">{driver.points} 分</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
       </main>
+
+      <footer className="footer">
+        <p>数据来源：balldontlie API · 公开数据源</p>
+      </footer>
     </div>
   );
 }
+
+export default App;
