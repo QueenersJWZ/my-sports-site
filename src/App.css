@@ -40,8 +40,8 @@ body {
 }
 
 .site-title .big-letter {
-  font-size: 1.45em;           /* 比普通字母大 45% */
-  color: #0891b2;              /* 稍深一点的青色，形成层次感 */
+  font-size: 1.75em;           /* 比普通字母大 45% */
+  color: #06d1d4;              /* 稍深一点的青色，形成层次感 */
   vertical-align: -0.05em;     /* 微调对齐 */
   display: inline-block;
 }
