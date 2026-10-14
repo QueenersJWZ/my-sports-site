@@ -434,7 +434,7 @@ function App() {
     <div className="app">
       <header className="header">
         <h1>Queeners Sports Hub</h1>
-        <p>过去 14 天 · 未来 14 天 | 北京时间</p>
+        <p>ॐ मणि पद्मे हूँ</p>
       </header>
 
       {/* 一级 Tab 导航 */}
