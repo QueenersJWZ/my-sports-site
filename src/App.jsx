@@ -433,7 +433,11 @@ function App() {
   return (
     <div className="app">
       <header className="header">
-        <h1>Queeners Sports Hub</h1>
+        <h1 className="site-title">
+          <span className="big-letter">Q</span>ueeners{' '}
+          <span className="big-letter">S</span>ports{' '}
+          <span className="big-letter">H</span>ub
+        </h1>
         <p>ॐ मणि पद्मे हूँ</p>
       </header>
 
