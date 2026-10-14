@@ -142,9 +142,9 @@ function App() {
 
         // 免费层支持的联赛：英超 PL、西甲 PD、中超 CSL
         const leagues = [
-          { code: 'PL', name: '英超', teams: ['Manchester City FC'] },
-          { code: 'PD', name: '西甲', teams: ['FC Barcelona'] },
-          { code: 'CSL', name: '中超', teams: ['Shandong Taishan FC', 'Shandong Luneng'] },
+          { code: 'PL', name: '英超', teams: ['Manchester City FC'], hasStandings: true },
+          { code: 'PD', name: '西甲', teams: ['FC Barcelona'], hasStandings: true },
+          { code: 'CL', name: '欧冠', teams: ['Manchester City FC', 'FC Barcelona'], hasStandings: false },
         ];
 
         const allMatches = [];
@@ -273,7 +273,7 @@ function App() {
           });
           setF1DriverStandings(
             unique
-              .sort((a, b) => (b.points || 0) - (a.points || 0))
+              .sort((a, b) => (b.points_current || 0) - (a.points_current || 0))
               .slice(0, 20)
               .map((d) => ({
                 ...d,
@@ -290,7 +290,7 @@ function App() {
         if (teamsChampRes.ok) {
           const teamsChamp = await teamsChampRes.json();
           setF1TeamStandings(
-            teamsChamp.sort((a, b) => (b.points || 0) - (a.points || 0))
+            teamsChamp.sort((a, b) => (b.points_current || 0) - (a.points_current || 0))
           );
         }
 
@@ -725,7 +725,7 @@ function App() {
                         <span className="position">{i + 1}</span>
                         <span className="driver-name">{d.driverName}</span>
                         <span className="points-badge">
-                          {d.points} 分
+                          {d.points_current ?? 0} 分
                         </span>
                       </li>
                     ))}
@@ -747,7 +747,7 @@ function App() {
                           {t.team_name || `车队 #${t.team_id}`}
                         </span>
                         <span className="points-badge">
-                          {t.points} 分
+                          {t.points_current ?? 0} 分
                         </span>
                       </li>
                     ))}
