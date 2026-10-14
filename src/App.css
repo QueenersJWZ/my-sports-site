@@ -1,3 +1,11 @@
+/* Airstrike - 用于标题 */
+@font-face {
+  font-family: 'Airstrike';
+  src: url('/fonts/Airstrike.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
 * {
   box-sizing: border-box;
   margin: 0;
@@ -5,7 +13,7 @@
 }
 
 body {
-  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: 'Roboto', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   background: #f0f2f5;
   color: #1a1a1a;
 }
@@ -22,8 +30,12 @@ body {
 }
 
 .header h1 {
-  font-size: 28px;
+  font-family: 'Airstrike', 'Roboto', sans-serif;
+  font-size: 40px;             /* Airstrike 字比较窄，可以稍大一点 */
+  font-weight: normal;         /* Airstrike 只有 normal 字重 */
+  letter-spacing: 2px;
   margin-bottom: 6px;
+  color: #2563eb;
 }
 
 .header p {
