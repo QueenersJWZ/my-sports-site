@@ -17,7 +17,7 @@ function App() {
     // 1. 计算日期范围：今天和过去6天，总共一周
     const today = new Date();
     const pastDate = new Date();
-    pastDate.setDate(today.getDate() - 6);
+    pastDate.setDate(today.getDate() - 14);
 
     const formatDate = (date) => date.toISOString().split('T')[0];
 
