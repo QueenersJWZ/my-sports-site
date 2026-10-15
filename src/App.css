@@ -14,8 +14,16 @@
 
 body {
   font-family: 'Roboto', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  background: #f0f2f5;
+  /* background: #f0f2f5; */ /* 注释掉原来的纯色背景，或作为图片加载失败时的回退色 */
   color: #1a1a1a;
+  
+  /* 新增背景图设置 */
+  background-image: url('/images/offercome.jpg'); /* 图片路径，根据实际位置调整 */
+  background-size: cover;       /* 让图片覆盖整个屏幕 */
+  background-position: center;  /* 图片居中显示 */
+  background-repeat: no-repeat; /* 不重复平铺 */
+  background-attachment: fixed; /* 页面滚动时背景固定 */
+  min-height: 100vh;            /* 确保 body 至少占满整个视口高度 */
 }
 
 .app {
